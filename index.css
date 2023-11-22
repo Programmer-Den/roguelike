@@ -1,0 +1,30 @@
+body {
+  margin: 0;
+  background-color: black;
+  display: flex;
+}
+
+p {
+  font-family: Ubuntu, Roboto, 'Open Sans', 'Playfair Display';
+  font-size: 2.75rem;
+  color: white;
+  position: absolute;
+  right: 0.75rem;
+  margin: 0;
+}
+
+aside img { position: absolute; right: 9.25rem }
+.field  * { position: absolute; cursor: move }
+
+.field .tile {
+  background-size: 100%;
+  background-image: url(images/tile.png);
+  z-index: 5;
+}
+.field .wall { background-image: url(images/wall.png); }
+.field .char { background-image: url(images/char.png); z-index: 10; }
+.field .enemy { background-image: url(images/enemy.png); z-index: 10; }
+.field .sword { background-image: url(images/sword.png); z-index: 9; }
+.field .HP { background-image: url(images/HP.png); z-index: 9; }
+.field .tile .health-bar { background-color: #ff0000; z-index: 11; left: 0px; top: 0px; height: 3px; }
+.field .char .health-bar { background-color: #00ff00; z-index: 11; left: 0px; top: 0px; height: 3px; }
