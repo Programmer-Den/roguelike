@@ -125,10 +125,7 @@ function generateSequentialRooms() {
       baseRoom = newRoom;
     }
   }
-
-  displayField();
-  
-  return true;
+  return true
 }
 
 function addBaseRoom() {
@@ -287,10 +284,11 @@ function displayField() {
       var image = document.createElement('img');
 
       switch (game.field[y][x]) {
-        case 'wall': image.className += 'wall';
-        default:		 image.className += ' tile';
+        case 'player': image.className += ' char';
+        case 'wall':   image.className += ' wall';
+        default:		   image.className += ' tile';
       }
-      
+  
       image.style.height = '20.48px';
       image.style.width  = '20.48px';
       image.style.left 	 = 20.48 * x + 'px';
@@ -301,6 +299,30 @@ function displayField() {
   }
 }
 
+function findOutEmptyTile() {
+  do {
+    var y = Math.floor(Math.random() * rowsNumber);
+    var x = Math.floor(Math.random() * columnsNum);
+  }
+  while (game.field[y][x] != 'tile');
+
+  return { y: y, x: x }
+}
+
+function generatePlayerOnMap() {
+  var emptyTile = findOutEmptyTile();
+
+  addElementOntoMap(emptyTile, 'player');
+
+  return new Player(100, 12.5, emptyTile);
+}
+
+function addElementOntoMap(coords, elementName) {
+  game.field[coords.y][coords.x] = elementName;
+}
+
 var game = new Game();
 
-generateSequentialRooms();
+var player = generateSequentialRooms() && generatePlayerOnMap();
+
+displayField();
