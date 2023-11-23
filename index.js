@@ -29,7 +29,6 @@ function Game() {
   this.field   = [];
   this.rooms   = [];
   this.enemies = [];
-  this.potions = [];
   this.currentRoomId = 0;
 }
 
@@ -55,10 +54,6 @@ function Enemy(coords, health, damage) {
   this.health = health;
   this.damage = damage;
 }
-
-function Sword(coords) { this.coords = coords }
-
-function Potion(coords) { this.coords = coords }
 
 Room.prototype.addNeighbor = function(room) {
   this.neighbors.push(room);
@@ -325,8 +320,6 @@ function generateMapElement(elementName) {
   switch (elementName) {
     case 'player': return new Player(emptyTile, 100, 12.5);
     case 'enemy':  return new Enemy(emptyTile, 100, 12.5)
-    case 'sword':  return new Sword(emptyTile);
-    case 'potion': return new Potion(emptyTile);
   }
 }
 
@@ -334,16 +327,18 @@ function addElementOntoMap(coords, elementName) {
   game.field[coords.y][coords.x] = elementName;
 }
 
-function generateEnemiesOrPotions(enemiesOrPotions, quantity) {  
-  var enemyOrPotion = generateMapElement(
-      enemiesOrPotions == 'enemies' ? 'enemy' : 'potion'
-  );
+function generateEnemies(enemiesQuantity) {
+  var enemy = generateMapElement('enemy');
 
-  if (game[enemiesOrPotions].push(enemyOrPotion) == quantity) {
-    return
-  } // терминальный случай рекурсии; сам push => длину массива
-  
-  return generateEnemiesOrPotions(enemiesOrPotions, quantity);
+  if (game.enemies.push(enemy) === enemiesQuantity) return;
+
+  return generateEnemies(enemiesQuantity);
+}
+
+function generateLotOfEl(elementsQuantity, elementName) {
+  for (var i = 0; i < elementsQuantity; i++) {
+    generateMapElement(elementName);
+  }
 }
 
 var game = new Game();
@@ -352,7 +347,20 @@ generateSequentialRooms();
 
 var player = generateMapElement('player');
 
-generateEnemiesOrPotions('enemies', 10);
-generateEnemiesOrPotions('potions', 10);
+generateEnemies(enemiesNum);
+generateLotOfEl(potionsNum, 'potion');
+generateLotOfEl(swordsNum, 'sword');
 
-displayField();
+function realizeConsequencesOfHeroStep() {
+  switch (game.field[player.coords.y][player.coords.x])
+  {
+    case 'sword':  player.damage *= 2;  // без — 12.5, c ⚔ — 25—50
+    case 'potion': player.health += 25;
+    default:
+      game.field[player.coords.y][player.coords.x] = 'player'
+  }
+  
+  displayField();
+}
+
+realizeConsequencesOfHeroStep();
