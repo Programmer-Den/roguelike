@@ -29,7 +29,7 @@ function Game() {
   this.field   = [];
   this.rooms   = [];
   this.enemies = [];
-
+  this.potions = [];
   this.currentRoomId = 0;
 }
 
@@ -37,28 +37,28 @@ function Passage() {
   this.start = { x: 0, y: 0 };
   this.end   = { x: 0, y: 0 };
 }
-
 function Room(center, start, end) {
   this.center = center;
   this.start  = start; // слева сверху
   this.end	  = end;  //  справа снизу
-
   this.id = null;
-
   this.neighbors = [];
 }
 
-function Player(health, damage, coords) {
+function Player(coords, health, damage) {
+  this.coords = coords;
   this.health = health;
   this.damage = damage;
+}
+function Enemy(coords, health, damage) {
   this.coords = coords;
+  this.health = health;
+  this.damage = damage;
 }
 
-function Enemy(health, damage, coords) {
-  this.health = health;
-  this.damage = damage;
-  this.coords = coords;
-}
+function Sword(coords) { this.coords = coords }
+
+function Potion(coords) { this.coords = coords }
 
 Room.prototype.addNeighbor = function(room) {
   this.neighbors.push(room);
@@ -289,7 +289,9 @@ function displayField() {
       var image = document.createElement('img');
 
       switch (game.field[y][x]) {
-        case 'enemy' : image.className += 'enemy';
+        case 'potion': image.className += ' HP';
+        case 'sword':  image.className += ' sword';
+        case 'enemy':  image.className += ' enemy';
         case 'player': image.className += ' char';
         case 'wall':   image.className += ' wall';
         default:       image.className += ' tile';
@@ -321,13 +323,27 @@ function generateMapElement(elementName) {
   addElementOntoMap(emptyTile, elementName);
 
   switch (elementName) {
-    case 'player': return new Player(100, 12.5, emptyTile);
-    case 'enemy':  return new Enemy(100, 12.5, emptyTile);
+    case 'player': return new Player(emptyTile, 100, 12.5);
+    case 'enemy':  return new Enemy(emptyTile, 100, 12.5)
+    case 'sword':  return new Sword(emptyTile);
+    case 'potion': return new Potion(emptyTile);
   }
 }
 
 function addElementOntoMap(coords, elementName) {
   game.field[coords.y][coords.x] = elementName;
+}
+
+function generateEnemiesOrPotions(enemiesOrPotions, quantity) {  
+  var enemyOrPotion = generateMapElement(
+      enemiesOrPotions == 'enemies' ? 'enemy' : 'potion'
+  );
+
+  if (game[enemiesOrPotions].push(enemyOrPotion) == quantity) {
+    return
+  } // терминальный случай рекурсии; сам push => длину массива
+  
+  return generateEnemiesOrPotions(enemiesOrPotions, quantity);
 }
 
 var game = new Game();
@@ -336,17 +352,7 @@ generateSequentialRooms();
 
 var player = generateMapElement('player');
 
-generateEnemies(10);
-
-function generateEnemies(enemiesQuantity) {
-  var generateEnemy = function() {
-    var enemy = generateMapElement('enemy')
-
-    if (game.enemies.push(enemy) === enemiesQuantity) return;
-    
-    return generateEnemy(); // выше терминальный случай рекурсии
-  }
-  generateEnemy();
-}
+generateEnemiesOrPotions('enemies', 10);
+generateEnemiesOrPotions('potions', 10);
 
 displayField();
