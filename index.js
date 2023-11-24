@@ -3,7 +3,7 @@ var columnsNum = 40;
 var potionsNum = 10;
 var enemiesNum = 10;
 var swordsNum  = 2;
-var wallMapRim = 1; // ободок из стены на крайних клетках карты
+var wallMapRim = 3; // ободок из стены на крайних клетках карты
 
 Game.prototype.fillFieldWithWalls = function() {
   this.field = []; // всё игровое поле, т. е. вся игровая карта
@@ -134,7 +134,7 @@ function addBaseRoom() {
 
   var genCenterCoord = function(maxCellsOfOneDimension, dim) {
     var limit = wallMapRim + Math.round(dim / 2);
-    var range = maxCellsOfOneDimension - 4 * limit;
+    var range = maxCellsOfOneDimension - wallMapRim * limit;
 
     return limit + Math.round(Math.random() * range);
   }
@@ -233,6 +233,8 @@ function addAdjacentRoom(room) {
     game.carveRoomOrPassage(newRoom);
     game.rooms.push(newRoom);
     
+    viableRooms.splice(0, viableRooms.length);
+
     return newRoom;
   }
 }
@@ -267,8 +269,8 @@ function generateDimensions() {
   var width  = 5;
 
   var roomType = Math.random() < 0.5 ? 'tall' : 'wide';
-  
-  var extraRange = roomType == 'tall' ? 4.5 : 7.5;
+
+  var extraRange = roomType == 'tall' ? height * 1.5 : width * 1.5;
   var additional = Math.round(Math.random() * extraRange);
 
   roomType == 'tall' ? height += additional : width += additional;
@@ -279,31 +281,25 @@ function generateDimensions() {
 function displayField() {
   var fields = document.getElementsByClassName('field');
 
+  var removeOldEl = function(finalPartOfElementId) {
+    var existingElement = document.getElementById(
+      y.toString() + x.toString() + finalPartOfElementId
+    );
+    if (existingElement) existingElement.remove();
+  };
+
   for (var y = 0; y < 24; y++) {
     for (var x = 0; x < 40; x++) {
-      var image = document.createElement('img');
+      removeOldEl('image');
+      removeOldEl('playerBar');
+      removeOldEl('ememyBar');
       
-      fields[0].appendChild(image);
-
-      image.className = 'tile';
-
-      switch (game.field[y][x]) {
-        case 'wall':   image.className += ' wall';  break;
-        case 'player': image.className += ' char';  break;
-        case 'enemy':  image.className += ' enemy'; break;
-        case 'sword':  image.className += ' sword'; break;
-        case 'potion': image.className += ' HP'
-      }
-  
-      image.style.height = '20.48px';
-      image.style.width  = '20.48px';
-      image.style.left 	 =  20.48 * x + 'px';
-      image.style.top 	 =  20.48 * y + 'px';
-
       if (game.field[y][x] == 'enemy') {
         var healthBar = document.createElement('meter');
 
         fields[0].appendChild(healthBar);
+
+        healthBar.id = y.toString() + x.toString() + 'enemyBar';
         
         healthBar.value = game.enemies.find(
           function(obj) {
@@ -325,6 +321,8 @@ function displayField() {
               
         fields[0].appendChild(healthBar);
 
+        healthBar.id = y.toString() + x.toString() + 'playerBar';
+
         healthBar.value = player.health;
 
         healthBar.style.height = '13.28px';
@@ -338,13 +336,34 @@ function displayField() {
                           20.48 * x + 'px', 20.48 * y - 7 + 'px'
         )
       }
+      function styleHealthBar(healthBar, zIndex, width, left, top) {
+        healthBar.style.zIndex = zIndex;
+        healthBar.style.width  = width;
+        healthBar.style.left   = left;
+        healthBar.style.top    = top;
+      }
+
+      var image = document.createElement('img');
+    
+      fields[0].appendChild(image);
+
+      image.classList.add('tile');
+
+      image.id = y.toString() + x.toString() + 'image';
+
+      image.style.height = '20.48px';
+      image.style.width  = '20.48px';
+      image.style.left 	 =  20.48 * x + 'px';
+      image.style.top 	 =  20.48 * y + 'px';
+
+      switch (game.field[y][x]) {
+        case 'wall':   image.classList.add('wall');  break;
+        case 'player': image.classList.add('char');  break;
+        case 'enemy':  image.classList.add('enemy'); break;
+        case 'sword':  image.classList.add('sword'); break;
+        case 'potion': image.classList.add('HP')
+      }
     }
-  }
-  function styleHealthBar(healthBar, zIndex, width, left, top) {
-    healthBar.style.zIndex = zIndex;
-    healthBar.style.width  = width;
-    healthBar.style.left   = left;
-    healthBar.style.top    = top;
   }
 }
 
@@ -397,16 +416,43 @@ generateEnemies(enemiesNum);
 generateLotOfEl(potionsNum, 'potion');
 generateLotOfEl(swordsNum, 'sword');
 
+displayField();
+
+document.addEventListener('keydown', function(event) {
+  var y = player.coords.y;
+  var x = player.coords.x;
+
+  switch (event.code) {
+    case 'KeyW': y--; break;
+    case 'KeyA': x--; break;
+    case 'KeyS': y++; break;
+    case 'KeyD': x++; break;
+
+    default: return
+  }
+
+  if (game.field[y][x] != 'wall') {
+    updateHeroPosition(player.coords.y, player.coords.x, y, x);
+  
+    displayField();
+  }
+});
+
+function removeSubjectFromMap(y, x) { game.field[y][x] = 'tile' }
+
+function updateHeroPosition(oldY, oldX, newY, newX) {
+  removeSubjectFromMap(oldY, oldX);
+
+  player.coords.y = newY;
+  player.coords.x = newX;
+
+  realizeConsequencesOfHeroStep();
+}
+
 function realizeConsequencesOfHeroStep() {
-  switch (game.field[player.coords.y][player.coords.x])
-  {
+  switch (game.field[player.coords.y][player.coords.x]) {
     case 'potion': player.health += 25; break;
     case 'sword':  player.damage *= 2; // без — 12.5, c ⚔ — 25—50
   }
-
-  game.field[player.coords.y][player.coords.x] = 'player'
-  
-  displayField();
+  game.field[player.coords.y][player.coords.x] = 'player';
 }
-
-realizeConsequencesOfHeroStep();
