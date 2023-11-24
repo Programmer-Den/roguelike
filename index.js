@@ -282,23 +282,69 @@ function displayField() {
   for (var y = 0; y < 24; y++) {
     for (var x = 0; x < 40; x++) {
       var image = document.createElement('img');
+      
+      fields[0].appendChild(image);
+
+      image.className = 'tile';
 
       switch (game.field[y][x]) {
-        case 'potion': image.className += ' HP';
-        case 'sword':  image.className += ' sword';
-        case 'enemy':  image.className += ' enemy';
-        case 'player': image.className += ' char';
-        case 'wall':   image.className += ' wall';
-        default:       image.className += ' tile';
+        case 'wall':   image.className += ' wall';  break;
+        case 'player': image.className += ' char';  break;
+        case 'enemy':  image.className += ' enemy'; break;
+        case 'sword':  image.className += ' sword'; break;
+        case 'potion': image.className += ' HP'
       }
   
       image.style.height = '20.48px';
       image.style.width  = '20.48px';
-      image.style.left 	 = 20.48 * x + 'px';
-      image.style.top 	 = 20.48 * y + 'px';
+      image.style.left 	 =  20.48 * x + 'px';
+      image.style.top 	 =  20.48 * y + 'px';
 
-      fields[0].appendChild(image);
+      if (game.field[y][x] == 'enemy') {
+        var healthBar = document.createElement('meter');
+
+        fields[0].appendChild(healthBar);
+        
+        healthBar.value = game.enemies.find(
+          function(obj) {
+            return obj.coords.y == y && obj.coords.x == x
+          }
+        ).health;        
+        
+        healthBar.max = 100;
+        healthBar.min = 1;
+        healthBar.low = 50.75;
+        healthBar.high = 75.25;
+
+        healthBar.style.height = '9.84px';
+        healthBar.style.backgroundColor = 'red';
+      }
+
+      else if (game.field[y][x] == 'player') {
+        var healthBar = document.createElement('progress');
+              
+        fields[0].appendChild(healthBar);
+
+        healthBar.value = player.health;
+
+        healthBar.style.height = '13.28px';
+      }
+
+      if (game.field[y][x] == 'player' ||
+          game.field[y][x] == 'enemy')
+      {
+        styleHealthBar(
+          healthBar, 11, '20.48px',
+                          20.48 * x + 'px', 20.48 * y - 7 + 'px'
+        )
+      }
     }
+  }
+  function styleHealthBar(healthBar, zIndex, width, left, top) {
+    healthBar.style.zIndex = zIndex;
+    healthBar.style.width  = width;
+    healthBar.style.left   = left;
+    healthBar.style.top    = top;
   }
 }
 
@@ -319,7 +365,7 @@ function generateMapElement(elementName) {
 
   switch (elementName) {
     case 'player': return new Player(emptyTile, 100, 12.5);
-    case 'enemy':  return new Enemy(emptyTile, 100, 12.5)
+    case 'enemy':  return new Enemy (emptyTile, 100, 12.5)
   }
 }
 
@@ -354,11 +400,11 @@ generateLotOfEl(swordsNum, 'sword');
 function realizeConsequencesOfHeroStep() {
   switch (game.field[player.coords.y][player.coords.x])
   {
-    case 'sword':  player.damage *= 2;  // без — 12.5, c ⚔ — 25—50
-    case 'potion': player.health += 25;
-    default:
-      game.field[player.coords.y][player.coords.x] = 'player'
+    case 'potion': player.health += 25; break;
+    case 'sword':  player.damage *= 2; // без — 12.5, c ⚔ — 25—50
   }
+
+  game.field[player.coords.y][player.coords.x] = 'player'
   
   displayField();
 }
