@@ -31,7 +31,6 @@ function Game() {
   this.enemies = [];
   this.currentRoomId = 0;
 }
-
 function Passage() {
   this.start = { x: 0, y: 0 };
   this.end   = { x: 0, y: 0 };
@@ -43,7 +42,6 @@ function Room(center, start, end) {
   this.id = null;
   this.neighbors = [];
 }
-
 function Player(coords, health, damage) {
   this.coords = coords;
   this.health = health;
@@ -127,7 +125,6 @@ function generateSequentialRooms() {
     }
   }
 }
-
 function addBaseRoom() {
   var height = generateDimensions().height;
   var width  = generateDimensions().width;
@@ -167,7 +164,6 @@ function addAdjacentRoom(room) {
       Math.ceil(sizeOfNewRoom / 2) + passageLength
     )
   };
-
   var withinMapLimits = function(room) {
     return (
       room.start.y > wallMapRim &&
@@ -176,7 +172,6 @@ function addAdjacentRoom(room) {
       room.end.x < columnsNum - wallMapRim
     )
   };
-
   var returnRoomCenters = function() {
     return [
       {
@@ -197,7 +192,6 @@ function addAdjacentRoom(room) {
       } 
     ]
   };
-
   var overlapsAny = function(room) {
     for (var gameRoomIndex = 0;
              gameRoomIndex < game.rooms.length;
@@ -223,7 +217,6 @@ function addAdjacentRoom(room) {
        viableRooms.push(viableRoom);
     }
   }
-
   if (viableRooms.length > 0) {
     var index = Math.floor(Math.random() * viableRooms.length);
   
@@ -366,7 +359,6 @@ function displayField() {
     }
   }
 }
-
 function findOutEmptyTile() {
   do {
     var y = Math.floor(Math.random() * rowsNumber);
@@ -423,21 +415,54 @@ document.addEventListener('keydown', function(event) {
   var x = player.coords.x;
 
   switch (event.code) {
-    case 'KeyW': y--; break;
-    case 'KeyA': x--; break;
-    case 'KeyS': y++; break;
-    case 'KeyD': x++; break;
+    case 'KeyW': move(--y, x); break;
+    case 'KeyA': move(y, --x); break;
+    case 'KeyS': move(++y, x); break;
+    case 'KeyD': move(y, ++x); break;
+
+    case 'Space': attack([
+      {y: y - 1, x: x},     {y: y - 1, x: x + 1}, // север,  СВ
+      {y: y,     x: x + 1}, {y: y + 1, x: x + 1}, // восток, ЮВ
+      {y: y + 1, x: x},     {y: y + 1, x: x - 1}, // юг,     ЮЗ
+      {y: y,     x: x - 1}, {y: y - 1, x: x - 1}  // запад,  СЗ
+    ]);
+    break;
 
     default: return
   }
-
-  if (game.field[y][x] != 'wall') {
-    updateHeroPosition(player.coords.y, player.coords.x, y, x);
   
-    displayField();
+  displayField();
+
+  function move(y, x) {
+    if (game.field[y][x] != 'wall') {
+      updateHeroPosition(player.coords.y, player.coords.x, y, x);
+    }
+  }
+  function attack(coordinatesAroundHero) {
+    for (var i = 0; i < coordinatesAroundHero.length; i++) {
+      for (var j = 0; j < game.enemies.length; j++) {
+        var y = coordinatesAroundHero[i].y;
+        var x = coordinatesAroundHero[i].x;
+
+        if (y == game.enemies[j].coords.y &&
+            x == game.enemies[j].coords.x)
+        {
+          game.enemies[j].health -= player.damage;
+          
+          if (game.enemies[j].health <= 0) {
+            displayField();
+            
+            removeSubjectFromMap(y, x);
+
+            game.enemies.splice(j, 1);
+
+            game.enemies.length === 0 && alert('Победа!')
+          }
+        }
+      }
+    }
   }
 });
-
 function removeSubjectFromMap(y, x) { game.field[y][x] = 'tile' }
 
 function updateHeroPosition(oldY, oldX, newY, newX) {
