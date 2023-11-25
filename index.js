@@ -1,3 +1,16 @@
+function returnCoordinatesAroundEnemyOrPlayer(subject) {
+  return [
+    {y: subject.coords.y - 1, x: subject.coords.x},     // север
+    {y: subject.coords.y - 1, x: subject.coords.x + 1}, // СВ
+    {y: subject.coords.y,     x: subject.coords.x + 1}, // восток
+    {y: subject.coords.y + 1, x: subject.coords.x + 1}, // ЮВ
+    {y: subject.coords.y + 1, x: subject.coords.x},     // юг
+    {y: subject.coords.y + 1, x: subject.coords.x - 1}, // ЮЗ
+    {y: subject.coords.y,     x: subject.coords.x - 1}, // запад
+    {y: subject.coords.y - 1, x: subject.coords.x - 1}  // СЗ
+  ]
+}
+
 var rowsNumber = 24;
 var columnsNum = 40;
 var potionsNum = 10;
@@ -22,7 +35,7 @@ Game.prototype.carveRoomOrPassage = function(roomOrPass) {
     for (var x = roomOrPass.start.x; x <= roomOrPass.end.x; x++) {
       this.field[y][x] = 'tile';
     }
-  }
+  } // когда тут элемент 'tile', соответствующая клетка свободна
 };
 
 function Game() {
@@ -111,9 +124,9 @@ function generateSequentialRooms() {
 
   baseRoom = addBaseRoom();
 
-  var maxQuantityOfRooms = 17;
+  var maxQuantityOfRooms = 10;
 
-  while (game.rooms.length < 4) {
+  while (game.rooms.length < 5) {
     for (var i = 0; i < maxQuantityOfRooms; i++) {
       var newRoom = addAdjacentRoom(baseRoom);
   
@@ -262,8 +275,7 @@ function generateDimensions() {
   var width  = 5;
 
   var roomType = Math.random() < 0.5 ? 'tall' : 'wide';
-
-  var extraRange = roomType == 'tall' ? height * 1.5 : width * 1.5;
+  var extraRange = roomType == 'tall' ? height : width;
   var additional = Math.round(Math.random() * extraRange);
 
   roomType == 'tall' ? height += additional : width += additional;
@@ -298,7 +310,7 @@ function displayField() {
           function(obj) {
             return obj.coords.y == y && obj.coords.x == x
           }
-        ).health;        
+        ).health;
         
         healthBar.max = 100;
         healthBar.min = 1;
@@ -306,6 +318,7 @@ function displayField() {
         healthBar.high = 75.25;
 
         healthBar.style.height = '9.84px';
+        healthBar.style.zIndex = 5;
         healthBar.style.backgroundColor = 'red';
       }
 
@@ -319,18 +332,17 @@ function displayField() {
         healthBar.max = 100; // это для отображения, а так можно >
 
         healthBar.style.height = '13.28px';
+        healthBar.style.zIndex = 11;
       }
 
       if (game.field[y][x] == 'player' ||
           game.field[y][x] == 'enemy')
       {
-        styleHealthBar(
-          healthBar, 11, '20.48px',
-                          20.48 * x + 'px', 20.48 * y - 7 + 'px'
+        styleHealthBar(healthBar,
+          '20.48px', 20.48 * x + 'px', 20.48 * y - 7 + 'px'
         )
       }
-      function styleHealthBar(healthBar, zIndex, width, left, top) {
-        healthBar.style.zIndex = zIndex;
+      function styleHealthBar(healthBar, width, left, top) {
         healthBar.style.width  = width;
         healthBar.style.left   = left;
         healthBar.style.top    = top;
@@ -427,21 +439,84 @@ document.addEventListener('keydown', function(event) {
         {y: y + 1, x: x},     {y: y + 1, x: x - 1}, // юг,     ЮЗ
         {y: y,     x: x - 1}, {y: y - 1, x: x - 1}  // запад,  СЗ
       ],
-        'player' // название действующего лица, кто производит атаку
+        'player' // название производящего атаку действующего лица
       );
-      break;
-
-      default: return
+      break;  default: return
     }  
   }
   displayField();
 
-  function move(y, x) {
-    if (game.field[y][x] != 'wall') {
-      updateHeroPosition(player.coords.y, player.coords.x, y, x);
+  function move(newY, newX) {
+    if (game.field[newY][newX] != 'wall' &&
+        game.field[newY][newX] != 'enemy')
+    {
+      updateSubjectPosition(newY, newX, player, 'player');
+    }
+  } // move выше — функция передвижения игрока, ниже — противника
+});
+function move(newY, newX, enemy) {
+  if (game.field[newY][newX] == 'tile') {
+    updateSubjectPosition(newY, newX, enemy, 'enemy');
+  }
+}
+var moving = setInterval(function() { // интервал движения врагов
+  outer:
+  for (var i = 0; i < game.enemies.length; i++) {
+    var enemy = game.enemies[i];
+
+    for (var j = 0;
+             j < returnCoordinatesAroundEnemyOrPlayer(enemy);
+             j++)
+    {
+      var y = coordinatesAroundEnemy[j].y;
+      var x = coordinatesAroundEnemy[j].x;
+
+      if (y == player.coords.y && x == player.coords.x) {
+        move(enemy.coords.y, enemy.coords.x, enemy);
+        
+        continue outer
+      }
+    }
+    var y = enemy.coords.y;
+    var x = enemy.coords.x;
+
+    if (!(direction in enemy) ) {
+      var direction = Math.random() > 0.5 ? true : false;
+
+      enemy.direction = direction;      //  ↑ ↓  :  ← →
+    }
+                       // по вертикали; сначала вверх, затем вниз
+    if (enemy.direction === true) {
+      if (game.field[y - 1][x] == 'tile') {
+        updateSubjectPosition(y - 1, x, enemy, 'enemy')
+      }
+      else if (game.field[y - 1][x] == 'player') continue;
+      else {
+        enemy.direction = !enemy.direction;
+
+        move(y + 1, x, enemy);
+      }
+    }      // по горизонтали; сначала влево, затем вправо
+    else {
+      if (game.field[y][x - 1] == 'tile') {
+        updateSubjectPosition(y, x - 1, enemy, 'enemy')
+      }
+      else if (game.field[y][x - 1] == 'player') continue;
+      else {
+        enemy.direction = !enemy.direction;
+        
+        move(y, x + 1, enemy);
+      }
     }
   }
-});
+}, 1000);
+
+var attacking = setInterval(function() { // интервал атаки врагом
+  attack(returnCoordinatesAroundEnemyOrPlayer(player), 'enemy');
+
+  displayField();
+}, 500); // каждые полсекунды атака противником, когда прям подле
+
 function attack(coordinatesAroundHero, attackingSubjectName) {
   for (var i = 0; i < coordinatesAroundHero.length; i++) {
     for (var j = 0; j < game.enemies.length; j++) {
@@ -467,11 +542,13 @@ function attack(coordinatesAroundHero, attackingSubjectName) {
 
                 location.reload() // обновляет страницу с картой
               }
-            }, 500) // через полсекунды
+            }, 500)
           }
         }
         else {
           player.health -= game.enemies[j].damage;
+
+          displayField();
 
           if (player.health <= 0) {          
             removeSubjectFromMap(player.coords.y, player.coords.x);
@@ -483,43 +560,30 @@ function attack(coordinatesAroundHero, attackingSubjectName) {
 
               location.reload() // обновляет страницу с картой
             }, 500)
-          }         // через полсекунды
+          }
         }
       }
     }
   }
 }
-var attacking = setInterval(function() {
-  attack([
-    {y: player.coords.y - 1, x: player.coords.x},     // север
-    {y: player.coords.y - 1, x: player.coords.x + 1}, // СВ
-    {y: player.coords.y,     x: player.coords.x + 1}, // восток
-    {y: player.coords.y + 1, x: player.coords.x + 1}, // ЮВ
-    {y: player.coords.y + 1, x: player.coords.x},     // юг
-    {y: player.coords.y + 1, x: player.coords.x - 1}, // ЮЗ
-    {y: player.coords.y,     x: player.coords.x - 1}, // запад
-    {y: player.coords.y - 1, x: player.coords.x - 1}  // СЗ
-  ],
-    'enemy'); // название действующего лица, кто производит атаку
-
-    displayField()
-}, 500);          // каждые полсекунды, когда оппонент прям подле
-
 function removeSubjectFromMap(y, x) { game.field[y][x] = 'tile' }
 
-function updateHeroPosition(oldY, oldX, newY, newX) {
-  removeSubjectFromMap(oldY, oldX);
+function updateSubjectPosition(newY, newX, subject, subjectStr) {
+  removeSubjectFromMap(subject.coords.y, subject.coords.x);
 
-  player.coords.y = newY;
-  player.coords.x = newX;
+  subject.coords.y = newY;
+  subject.coords.x = newX;
 
-  realizeConsequencesOfHeroStep();
+  if (subject == player) realizeConsequencesOfHeroStep();
+
+  game.field[subject.coords.y][subject.coords.x] = subjectStr;
+
+  displayField();
 }
 
 function realizeConsequencesOfHeroStep() {
   switch (game.field[player.coords.y][player.coords.x]) {
-    case 'potion': player.health += 25; break;
+    case 'potion': player.health += 25;  break;
     case 'sword':  player.damage *= 2; // без — 12.5, c ⚔ — 25—50
   }
-  game.field[player.coords.y][player.coords.x] = 'player';
 }
