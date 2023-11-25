@@ -293,7 +293,7 @@ function displayField() {
         fields[0].appendChild(healthBar);
 
         healthBar.id = y.toString() + x.toString() + 'enemyBar';
-        
+
         healthBar.value = game.enemies.find(
           function(obj) {
             return obj.coords.y == y && obj.coords.x == x
@@ -315,8 +315,8 @@ function displayField() {
         fields[0].appendChild(healthBar);
 
         healthBar.id = y.toString() + x.toString() + 'playerBar';
-
         healthBar.value = player.health;
+        healthBar.max = 100; // это для отображения, а так можно >
 
         healthBar.style.height = '13.28px';
       }
@@ -414,23 +414,26 @@ document.addEventListener('keydown', function(event) {
   var y = player.coords.y;
   var x = player.coords.x;
 
-  switch (event.code) {
-    case 'KeyW': move(--y, x); break;
-    case 'KeyA': move(y, --x); break;
-    case 'KeyS': move(++y, x); break;
-    case 'KeyD': move(y, ++x); break;
+  if (player.health > 0) {
+    switch (event.code) {
+      case 'KeyW': move(--y, x); break;
+      case 'KeyA': move(y, --x); break;
+      case 'KeyS': move(++y, x); break;
+      case 'KeyD': move(y, ++x); break;
 
-    case 'Space': attack([
-      {y: y - 1, x: x},     {y: y - 1, x: x + 1}, // север,  СВ
-      {y: y,     x: x + 1}, {y: y + 1, x: x + 1}, // восток, ЮВ
-      {y: y + 1, x: x},     {y: y + 1, x: x - 1}, // юг,     ЮЗ
-      {y: y,     x: x - 1}, {y: y - 1, x: x - 1}  // запад,  СЗ
-    ]);
-    break;
+      case 'Space': attack([
+        {y: y - 1, x: x},     {y: y - 1, x: x + 1}, // север,  СВ
+        {y: y,     x: x + 1}, {y: y + 1, x: x + 1}, // восток, ЮВ
+        {y: y + 1, x: x},     {y: y + 1, x: x - 1}, // юг,     ЮЗ
+        {y: y,     x: x - 1}, {y: y - 1, x: x - 1}  // запад,  СЗ
+      ],
+        'player' // название действующего лица, кто производит атаку
+      );
+      break;
 
-    default: return
+      default: return
+    }  
   }
-  
   displayField();
 
   function move(y, x) {
@@ -438,31 +441,70 @@ document.addEventListener('keydown', function(event) {
       updateHeroPosition(player.coords.y, player.coords.x, y, x);
     }
   }
-  function attack(coordinatesAroundHero) {
-    for (var i = 0; i < coordinatesAroundHero.length; i++) {
-      for (var j = 0; j < game.enemies.length; j++) {
-        var y = coordinatesAroundHero[i].y;
-        var x = coordinatesAroundHero[i].x;
+});
+function attack(coordinatesAroundHero, attackingSubjectName) {
+  for (var i = 0; i < coordinatesAroundHero.length; i++) {
+    for (var j = 0; j < game.enemies.length; j++) {
+      var y = coordinatesAroundHero[i].y;
+      var x = coordinatesAroundHero[i].x;
 
-        if (y == game.enemies[j].coords.y &&
-            x == game.enemies[j].coords.x)
-        {
-          game.enemies[j].health -= player.damage;
-          
-          if (game.enemies[j].health <= 0) {
+      if (y == game.enemies[j].coords.y &&
+          x == game.enemies[j].coords.x)
+      {
+        if (attackingSubjectName == 'player') {
+          game.enemies[j].health -= player.damage
+
+          if (game.enemies[j].health <= 0) {          
             displayField();
-            
+
             removeSubjectFromMap(y, x);
 
             game.enemies.splice(j, 1);
 
-            game.enemies.length === 0 && alert('Победа!')
+            setTimeout(function() {
+              if (game.enemies.length === 0) {
+                alert('Враг повержен, ура!');
+
+                location.reload() // обновляет страницу с картой
+              }
+            }, 500) // через полсекунды
           }
+        }
+        else {
+          player.health -= game.enemies[j].damage;
+
+          if (player.health <= 0) {          
+            removeSubjectFromMap(player.coords.y, player.coords.x);
+
+            clearInterval(attacking);
+
+            setTimeout(function() {
+              alert('Вы полегли доблестно...')
+
+              location.reload() // обновляет страницу с картой
+            }, 500)
+          }         // через полсекунды
         }
       }
     }
   }
-});
+}
+var attacking = setInterval(function() {
+  attack([
+    {y: player.coords.y - 1, x: player.coords.x},     // север
+    {y: player.coords.y - 1, x: player.coords.x + 1}, // СВ
+    {y: player.coords.y,     x: player.coords.x + 1}, // восток
+    {y: player.coords.y + 1, x: player.coords.x + 1}, // ЮВ
+    {y: player.coords.y + 1, x: player.coords.x},     // юг
+    {y: player.coords.y + 1, x: player.coords.x - 1}, // ЮЗ
+    {y: player.coords.y,     x: player.coords.x - 1}, // запад
+    {y: player.coords.y - 1, x: player.coords.x - 1}  // СЗ
+  ],
+    'enemy'); // название действующего лица, кто производит атаку
+
+    displayField()
+}, 500);          // каждые полсекунды, когда оппонент прям подле
+
 function removeSubjectFromMap(y, x) { game.field[y][x] = 'tile' }
 
 function updateHeroPosition(oldY, oldX, newY, newX) {
